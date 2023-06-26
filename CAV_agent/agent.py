@@ -85,7 +85,9 @@ class AV_RL_agent:
             fake_vehicle_rows = [fake_vehicle_row for _ in range(self.observed_BV_num + 1 - state_df.shape[0])]
             rows = np.array(fake_vehicle_rows)
             # rows = -np.ones((self.observed_BV_num + 1 - state_df.shape[0], len(observation.FEATURES_acc_training)))
-            state_df = state_df.append(pd.DataFrame(data=rows, columns=observation.FEATURES_acc_training), ignore_index=True)
+            for row in rows:
+                state_df.loc[len(state_df)] = row
+            # state_df = state_df.append(pd.DataFrame(data=rows, columns=observation.FEATURES_acc_training), ignore_index=True)
 
         return state_df.values.flatten()
 

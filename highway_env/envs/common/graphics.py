@@ -17,7 +17,7 @@ class EnvViewer(object):
 
     def __init__(self, env):
         self.env = env
-
+        
         pygame.init()
         pygame.display.set_caption("Highway-env")
         panel_size = (self.env.config["screen_width"], self.env.config["screen_height"])
@@ -109,7 +109,8 @@ class EnvViewer(object):
         pygame.display.flip()
 
         if self.SAVE_IMAGES:
-            pygame.image.save(self.screen, "highway-env_{}.png".format(self.frame))
+            pygame.image.save(self.screen, "./pic/highway-env_{}.png".format(self.frame))
+
             self.frame += 1
 
     def get_image(self):

@@ -77,11 +77,11 @@ class AbstractEnv(gym.Env):
         self.done = False
 
         # Rendering
-        self.viewer = None
+        self.viewer = EnvViewer(self)
         self.automatic_rendering_callback = None
         self.should_update_rendering = True
         self.rendering_mode = 'human'
-        self.enable_auto_render = False
+        self.enable_auto_render = True
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -194,7 +194,6 @@ class AbstractEnv(gym.Env):
         :param mode: the rendering mode
         """
         self.rendering_mode = mode
-
         if self.viewer is None:
             self.viewer = EnvViewer(self)
 
@@ -256,7 +255,6 @@ class AbstractEnv(gym.Env):
         """
         if self.viewer is not None and self.enable_auto_render:
             self.should_update_rendering = True
-
             if self.automatic_rendering_callback:
                 self.automatic_rendering_callback()
             else:

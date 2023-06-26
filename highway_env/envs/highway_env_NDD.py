@@ -220,8 +220,8 @@ class HighwayEnvNDD(HighwayExitEnv):
         bv_action = action.bv_action
         if bv_action:
             assert len(bv_action) == len(self.controlled_bvs)
+        # weight is importance sampling likelihood
         weight = self._simulate(cav_action, bv_action)
-        # self.determine_bv()
         done, cav_crash_flag, bv_crash_flag, finish_flag, bv_crash_index = self._is_terminal()
         info = {"cav_crash_flag": cav_crash_flag, "bv_crash_flag": bv_crash_flag, "finish_flag": finish_flag, "bv_crash_index": bv_crash_index, "cav_action": cav_action}
         # get episode results and observation and action indicator
@@ -229,8 +229,9 @@ class HighwayEnvNDD(HighwayExitEnv):
         if done:
             if not infos["scene_type"]:
                 print("!")
-
+        # Still need to select near bv to reduce the search space
         self.determine_candidate_controlled_bv()
+        # Still need to control av and bvs
         observation_and_indicator = self.observe_cav_bv()
         for bv in self.road.vehicles[1:]:
             bv.actual_action = False
@@ -265,6 +266,7 @@ class HighwayEnvNDD(HighwayExitEnv):
         """
 
         cav_observation, cav_action_indicator = self.get_cav_observation()
+
         bv_observation, bv_action_indicator = self.get_bv_observation()
         observation = Observation(cav_observation=cav_observation, bv_observation=bv_observation)
         indicator = Indicator(cav_indicator=cav_action_indicator, bv_indicator=bv_action_indicator)
@@ -313,6 +315,7 @@ class HighwayEnvNDD(HighwayExitEnv):
         """
         action_indicator = self.vehicle.get_action_indicator(ndd_flag=False, safety_flag=True, CAV_flag=True)
         obs, cav_obs_vehs_list = self.observation.original_observe_acc_training(cav_obs_num=self.cav_observation_num, cav_observation_range=self.cav_observation_range)
+        
         self.cav_obs_vehs_list = cav_obs_vehs_list
         return obs, action_indicator
 
@@ -515,6 +518,7 @@ class HighwayEnvNDD(HighwayExitEnv):
             self.time += 1
             # Automatically render intermediate simulation steps if a viewer has been launched
             self._automatic_rendering()
+
             road_crash_flag = False
             for vehicle in self.road.vehicles:
                 if vehicle.crashed:
@@ -529,7 +533,7 @@ class HighwayEnvNDD(HighwayExitEnv):
             if not (vehicle.position[0] > self.delete_BV_position) and vehicle is not self.vehicle:
                 new_vehicles_list.append(vehicle)
         self.road.vehicles = new_vehicles_list
-        self.enable_auto_render = False
+        # self.enable_auto_render = False
         return weight_one_step
 
     def _gen_NDD_veh(self, pos_low=global_val.random_veh_pos_buffer_start, pos_high=global_val.random_veh_pos_buffer_end):

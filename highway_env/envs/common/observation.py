@@ -125,10 +125,13 @@ class KinematicObservation(ObservationType):
         _vehicle_count = cav_obs_num  # maximum number of observed BV
         close_vehicles = self.env.road.get_BV(self.env.vehicle, _vehicle_count, cav_observation_range)
         if close_vehicles:
-            df = df.append(pandas.DataFrame.from_records(
-                [v.to_dict_acc_training()
-                 for v in close_vehicles[:_vehicle_count]])[self.features_acc_training],
-                           ignore_index=True)
+            for v in close_vehicles[:_vehicle_count]:
+                df.loc[len(df)] = {key:value for key,value in v.to_dict_acc_training().items() if key in self.features_acc_training }
+            
+            # df = df.append(pandas.DataFrame.from_records(
+            #     [v.to_dict_acc_training()
+            #      for v in close_vehicles[:_vehicle_count]])[self.features_acc_training],
+            #                ignore_index=True)
         assert(len(close_vehicles) <= cav_obs_num)
         return df, close_vehicles
 

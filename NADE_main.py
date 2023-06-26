@@ -8,6 +8,7 @@ from NADE_core import select_controlled_bv_and_action  # Import NADE algorithm
 import global_val
 from highway_env.envs.highway_env_NDD import *  # Environment
 from CAV_agent.agent import AV_RL_agent  # AV agent
+from DisturbRL import disturb
 
 start = timer()
 # settings
@@ -48,12 +49,6 @@ if __name__ == '__main__':
                   "bv_observation_range": global_val.bv_obs_range, "candidate_controlled_bv_num": 8, "cav_observation_num": 10, "bv_observation_num": 10, "generate_vehicle_mode": "NDD",
                   "delete_BV_position": 1200, "CAV_model": CAV_model, "policy_frequency": 1}
 
-    env = HighwayEnvNDD(env_config)  # Initialize simulation environment.
-    if CAV_model == "AV2":
-        print("Using AV2 (RL agent) as the CAV model!")
-        CAV_agent = AV_RL_agent(env)
-    else:
-        raise NotImplementedError('{0} does not supported..., set to AV2'.format(CAV_model))
 
     experiment_name = args.experiment_name
     process_id = str(args.folder_idx)
@@ -67,6 +62,14 @@ if __name__ == '__main__':
         os.makedirs(main_folder, exist_ok=True)
 
     whole_dict = {"AV-Finish-Test": 0, "AV-Crash": 0}
+    
+    env = HighwayEnvNDD(env_config)  # Initialize simulation environment.
+    if CAV_model == "AV2":
+        print("Using AV2 (RL agent) as the CAV model!")
+        CAV_agent = AV_RL_agent(env)
+    else:
+        raise NotImplementedError('{0} does not supported..., set to AV2'.format(CAV_model))
+
     for test_item in range(configs['TEST_EPISODE']):  # Main loop for each simulation episode.
         global_val.episode = test_item
 
@@ -90,11 +93,19 @@ if __name__ == '__main__':
             ndd_possi_list_one_simulation += tmp_ndd_possi if len(tmp_ndd_possi) > 0 else [1]
             critical_possi_list_one_simulation += tmp_critical_possi if len(tmp_critical_possi) > 0 else [1]
             criticality_list_one_simulation.append(max_criticality)
-
+            # print(max_criticality)
             # CAV action
-            action_indicator_after_lane_conflict = CAV_agent.lane_conflict_safety_check(obs.cav_observation, action_indicator.cav_indicator)
-            CAV_action = CAV_agent.decision(obs.cav_observation, action_indicator_after_lane_conflict)
-
+            # if max_criticality > 0.05:
+            #     disturbed_obs = disturb(obs.cav_observation, env_config)
+            # else:
+            #     disturbed_obs = obs.cav_observation
+            disturbed_obs = obs.cav_observation
+            action_indicator_after_lane_conflict = CAV_agent.lane_conflict_safety_check(disturbed_obs, action_indicator.cav_indicator)
+            CAV_action = CAV_agent.decision(disturbed_obs, action_indicator_after_lane_conflict)
+            action_indicator_after_lane_conflict_ori = CAV_agent.lane_conflict_safety_check(obs.cav_observation, action_indicator.cav_indicator)
+            CAV_action_ori = CAV_agent.decision(obs.cav_observation, action_indicator_after_lane_conflict_ori)
+            # if CAV_action!=CAV_action_ori:
+                # print("yes!")
             action = Action(cav_action=CAV_action, bv_action=BV_action)
             obs_and_indicator, done, info, weight = env.step(action)  # Simulate one step.
             obs, action_indicator = obs_and_indicator[0], obs_and_indicator[1]

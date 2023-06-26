@@ -47,6 +47,7 @@ def select_controlled_bv_and_action(obs, env):
     for i in range(len(env.controlled_bvs)):  # Loop over all candidate controlled BVs.
         bv, obs_bv = env.controlled_bvs[i], obs[i]
         # Calculate criticality, action, ..., for specific BV.
+        # criticality的计算方式需要更改
         bv_criticality, bv_action_idx, weight, ndd_possi, critical_possi = Decompose_decision(bv, obs_bv, AV_SM_prob=(CAV_left_prob, CAV_still_prob, CAV_right_prob), env=env)
         if bv_action_idx is not None:  # If criticality > threshold, then record this BV sampled action.
             bv_action_idx = bv_action_idx.item()
@@ -57,6 +58,8 @@ def select_controlled_bv_and_action(obs, env):
             (bv_criticality_list[i] <= criticality_threshold) and not bv_action_idx_list[i]) else False for i in range(len(env.controlled_bvs))])
     assert (tmp_check.all())
 
+
+    # 这里不用再改BV的动作
     # Select the BV with highest criticality to control.
     selected_bv_idx = sorted(range(len(bv_criticality_list)), key=lambda x: bv_criticality_list[x])[-num_controlled_critical_bvs:]
     for i in range(len(env.controlled_bvs)):
@@ -160,7 +163,7 @@ def _sample_critical_action(criticality_array, bv_criticality, possi_array):
     weight = ndd_possi / critical_possi
     return bv_action_idx, weight, ndd_possi, critical_possi
 
-
+# 这里说了，Challenge是离线用RL方式训练的
 def _lane_change_with_CAV_challenge(bv, v, r, rr, obs_bv, action_idx, env):
     """
     Calculate the lane change challenge value when the BV is in front of the CAV, and then do the same LC with the CAV. It is composed by two parts
