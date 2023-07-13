@@ -1,7 +1,9 @@
 import torch
 import torch.nn as nn
+import numpy as np
 from torch.distributions import MultivariateNormal
 from torch.distributions import Categorical
+import os
 
 ################################## set device ##################################
 print("============================================================================================")
@@ -85,8 +87,7 @@ class ActorCritic(nn.Module):
     
     def act(self, state,n):
 
-        mask = torch.zeros(probs.shape).to(device)
-        mask[:,:n]=1
+        
 
         if self.has_continuous_action_space:
             action_mean = self.actor(state)
@@ -94,6 +95,8 @@ class ActorCritic(nn.Module):
             dist = MultivariateNormal(action_mean, cov_mat)
         else:
             action_probs = self.actor(state)
+            mask = torch.zeros(action_probs.shape).to(device)
+            mask[:n]=1
             action_probs = action_probs*mask
             dist = Categorical(action_probs)
 
@@ -211,6 +214,7 @@ class Disturber:
 
     def update(self):
         # Monte Carlo estimate of returns
+        actor_loss_list,critic_loss_list=[],[]
         rewards = []
         discounted_reward = 0
         for reward, is_terminal in zip(reversed(self.buffer.rewards), reversed(self.buffer.is_terminals)):
@@ -229,8 +233,10 @@ class Disturber:
         old_logprobs = torch.squeeze(torch.stack(self.buffer.logprobs, dim=0)).detach().to(device)
         old_state_values = torch.squeeze(torch.stack(self.buffer.state_values, dim=0)).detach().to(device)
 
+        
         # calculate advantages
         advantages = rewards.detach() - old_state_values.detach()
+
 
         # Optimize policy for K epochs
         for _ in range(self.K_epochs):
@@ -248,22 +254,29 @@ class Disturber:
             surr1 = ratios * advantages
             surr2 = torch.clamp(ratios, 1-self.eps_clip, 1+self.eps_clip) * advantages
 
-            # final loss of clipped objective PPO
-            loss = -torch.min(surr1, surr2) + 0.5 * self.MseLoss(state_values, rewards) - 0.01 * dist_entropy
-            
+            # final loss of clipped objective PPO 这里为什么要合并在一起？？
+            actor_loss = -torch.min(surr1, surr2)
+            critic_loss = 0.5 * self.MseLoss(state_values, rewards)
+            loss = actor_loss + critic_loss - 0.01 * dist_entropy
+            actor_loss_list.append(actor_loss.cpu().detach().numpy())
+            critic_loss_list.append(critic_loss.cpu().detach().numpy())
             # take gradient step
             self.optimizer.zero_grad()
             loss.mean().backward()
             self.optimizer.step()
-            
+        
+
+
         # Copy new weights into old policy
         self.policy_old.load_state_dict(self.policy.state_dict())
 
         # clear buffer
         self.buffer.clear()
+
+        return np.array(actor_loss_list).mean(), np.array(critic_loss_list).mean()
     
     def save(self, checkpoint_path):
-        torch.save(self.policy_old.state_dict(), checkpoint_path)
+        torch.save(self.policy_old.state_dict(), os.path.join(checkpoint_path,'policy.pth'))
    
     def load(self, checkpoint_path):
         self.policy_old.load_state_dict(torch.load(checkpoint_path, map_location=lambda storage, loc: storage))

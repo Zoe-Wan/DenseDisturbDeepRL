@@ -7,7 +7,7 @@ from NADE_core import select_controlled_bv_and_action  # Import NADE algorithm
 import global_val
 from highway_env.envs.highway_env_NDD import *  # Environment
 from CAV_agent.agent import AV_RL_agent  # AV agent
-from DisturbRL_ori import Disturber
+from DisturbRL import Disturber
 import torch
 import matplotlib.pyplot as plt
 start = timer()
@@ -143,27 +143,28 @@ if __name__ == '__main__':
     else:
         raise NotImplementedError('{0} does not supported..., set to AV2'.format(CAV_model))
 
-    disturber = Disturber(
-        state_dim = (1+env_config["cav_observation_num"])*3, 
-        hidden_dim=128, 
-        action_dim=(1+env_config["cav_observation_num"]), 
-        actor_lr=5e-3, 
-        critic_lr=1e-2, 
-        lmbda=0.95, 
-        epochs=10, 
-        eps=0.2, 
-        gamma=0.98, 
-        device=torch.device("cuda"))
     # disturber = Disturber(
-    #     state_dim=(1+env_config["cav_observation_num"])*3, 
+    #     state_dim = (1+env_config["cav_observation_num"])*3, 
+    #     hidden_dim=128, 
     #     action_dim=(1+env_config["cav_observation_num"]), 
-    #     lr_actor=5e-3, 
-    #     lr_critic=1e-2, 
+    #     actor_lr=5e-3, 
+    #     critic_lr=1e-2, 
+    #     lmbda=0.95, 
+    #     epochs=10, 
+    #     eps=0.2, 
     #     gamma=0.98, 
-    #     K_epochs=10, 
-    #     eps_clip=0.2, 
-    #     has_continuous_action_space=False, 
-    #     action_std_init=0.6)
+    #     device=torch.device("cuda"))
+
+    disturber = Disturber(
+        state_dim=(1+env_config["cav_observation_num"])*3, 
+        action_dim=(1+env_config["cav_observation_num"]), 
+        lr_actor=5e-3, 
+        lr_critic=1e-2, 
+        gamma=0.98, 
+        K_epochs=10, 
+        eps_clip=0.2, 
+        has_continuous_action_space=False, 
+        action_std_init=0.6)
 
 
     if args.load_epi!=0:
@@ -181,7 +182,6 @@ if __name__ == '__main__':
         transition_dict = {'states': [], 'actions': [], 'next_states': [], 'rewards': [], 'dones': []}
         episode_return = 0
         disrupt_count = 0
-        aloss_buffer, closs_buffer = [], []
 
         while not done:
             
@@ -247,18 +247,20 @@ if __name__ == '__main__':
             episode_return += reward
 
             # 这里是不是可以shuffle一下state
-            transition_dict['states'].append(state)
-            transition_dict['actions'].append(disturb_action)
-            transition_dict['next_states'].append(next_state)
-            transition_dict['rewards'].append(reward)
-            transition_dict['dones'].append(done)
+            # transition_dict['states'].append(state)
+            # transition_dict['actions'].append(disturb_action)
+            # transition_dict['next_states'].append(next_state)
+            # transition_dict['rewards'].append(reward)
+            # transition_dict['dones'].append(done)
+            disturber.buffer.rewards.append(reward)
+            disturber.buffer.is_terminals.append(done)
 
             obs, action_indicator = next_obs, next_action_indicator
             
         if info["scene_type"] == "AV-Crash" and not args.test_flag:
-            aloss, closs = disturber.update(transition_dict)
-
-            # lossfile.write(str(aloss)+" "+str(closs)+"\n")
+            # aloss, closs = disturber.update(transition_dict)
+            aloss, closs = disturber.update()
+            lossfile.write(str(aloss)+" "+str(closs)+"\n")
             disrupt_count_list.append(disrupt_count)
             return_list.append(episode_return)
         logfile.write(str(episode_return)+" "+str(disrupt_count)+"\n")
@@ -267,7 +269,6 @@ if __name__ == '__main__':
 
 
         if test_item % args.save_freq==0 and not args.test_flag:
-            lossfile.write(str(aloss)+" "+str(closs)+"\n")
             d = os.path.join(savepath,str(test_item))
             if not os.path.exists(d):
                 os.mkdir(d)

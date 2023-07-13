@@ -6,7 +6,7 @@ episode = 0
 crush = 0
 episodes_list = []
 
-with open("shuffling/loss.txt") as f:
+with open("new_param_penal/loss.txt") as f:
     while True:
         t = f.readline()
         if not t:
