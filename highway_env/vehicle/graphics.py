@@ -55,8 +55,10 @@ class VehicleGraphics(object):
         color = cls.DEFAULT_COLOR
         if vehicle.crashed:
             color = cls.RED
-        elif vehicle.controlled:  # Vehicles within observation range of AV. POV and control candidate of NADE.
-            color = cls.PURPLE
+        # elif vehicle.controlled:  # Vehicles within observation range of AV. POV and control candidate of NADE.
+        #     color = cls.PURPLE
+        elif vehicle.disturbed:
+            color = cls.BLACK
         elif isinstance(vehicle, MDPVehicle):
             color = cls.EGO_COLOR
         elif isinstance(vehicle, IDMVehicle) or vehicle.IDM_flag:

@@ -533,7 +533,7 @@ class HighwayEnvNDD(HighwayExitEnv):
             if not (vehicle.position[0] > self.delete_BV_position) and vehicle is not self.vehicle:
                 new_vehicles_list.append(vehicle)
         self.road.vehicles = new_vehicles_list
-        # self.enable_auto_render = False
+        self.enable_auto_render = False
         return weight_one_step
 
     def _gen_NDD_veh(self, pos_low=global_val.random_veh_pos_buffer_start, pos_high=global_val.random_veh_pos_buffer_end):

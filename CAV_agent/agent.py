@@ -58,9 +58,9 @@ class AV_RL_agent:
         if not action_indicator.any():
             action_indicator[2] = True
         assert action_indicator.any()
-
         state = self._transfer_to_state_input(original_obs_df)
         state = torch.from_numpy(state).float().to(device)
+
         action_Q_full = self.net(state).detach().cpu().numpy()
         action_Q_full[np.array(action_indicator) == 0] = -np.inf
         action_id = np.argmax(action_Q_full).item()

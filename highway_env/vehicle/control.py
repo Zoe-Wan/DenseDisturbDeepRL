@@ -209,6 +209,11 @@ class ControlledVehicle(Vehicle):
             safety_action_indicator = np.ones(action_shape)
             if safety_flag:
                 obs = self._get_veh_obs()
+                for i in range(len(obs)):
+                    if obs[i]:
+                        
+                        if obs[i].disturbed == True:
+                            obs[i] = None
                 lateral_action_indicator = np.array([1, 1, 1])
                 lateral_result = self._check_lateral_safety(obs, lateral_action_indicator, CAV_flag=True)
                 longi_result = self._check_longitudinal_safety(obs, np.ones(action_shape - 2), lateral_result=lateral_result, CAV_flag=True)
@@ -343,6 +348,8 @@ class ControlledVehicle(Vehicle):
         Returns:
             observations.
         """
+        # 什么傻卵在这里也写上tmd获取obs
+        
         lane_id = self.lane_index[2]
         observation = []  # observation for this vehicle
         if lane_id == 0:

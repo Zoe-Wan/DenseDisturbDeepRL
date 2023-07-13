@@ -39,6 +39,7 @@ class Vehicle(Loggable):
         self.crashed = False
         self.log = []
         self.controlled = False
+        self.disturbed = False
         self.IDM_flag = False
 
     @classmethod
