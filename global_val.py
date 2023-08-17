@@ -6,7 +6,7 @@ import scipy.io
 # =========== Simulation parameters ==========
 simulation_resolution = 1  # The time interval(resolution) of the simulation platform (second)
 # =========== Vehicle parameters =============
-LENGTH, WIDTH = 5.0, 2.0
+LENGTH, WIDTH = 5, 2.0
 # =========== Highway parameters =============
 HIGHWAY_LENGTH = 1200
 EXIT_LENGTH = 800  # AV will run 400m each test (from 400 to 800).

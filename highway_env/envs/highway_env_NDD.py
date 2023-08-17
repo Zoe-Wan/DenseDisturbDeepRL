@@ -102,6 +102,8 @@ class HighwayEnvNDD(HighwayExitEnv):
         self.determine_candidate_controlled_bv()
         return self.observe_cav_bv(), ini_data
 
+
+
     def _make_vehicles(self, given_ini=None,
                        auto_vehicle=(0, global_val.initial_CAV_position, global_val.initial_CAV_speed)):
         """
@@ -125,7 +127,7 @@ class HighwayEnvNDD(HighwayExitEnv):
         other_vehicles_type = NDDVehicle
         ini_data = None
         if given_ini:
-            assert self.generate_vehicle_mode == "Given_ini"
+            assert self.generate_vehicle_mode == "given_ini"
 
         if self.generate_vehicle_mode == "NDD":
             vehicle_list = []  # each list in this container is for vehicles in each lane (without CAV)
@@ -142,6 +144,7 @@ class HighwayEnvNDD(HighwayExitEnv):
                     back_vehicle_speed, front_vehicle_speed = rand_speed, rand_speed
                     back_vehicle_position, front_vehicle_position = rand_position, rand_position
                     vehicle_forward_list_one_lane.append((rand_position, rand_speed))
+
                     v = other_vehicles_type(self.road, self.road.network.get_lane(('a', 'b', lane_idx)).position(rand_position, 0), 0, rand_speed)
                     self.road.vehicles.append(v)
 
@@ -162,6 +165,8 @@ class HighwayEnvNDD(HighwayExitEnv):
                             v_generate = rand_speed
                             pos_generate = back_vehicle_position + self.ff_dis + rand_position + global_val.LENGTH
 
+
+
                         else:  # CF
                             random_number = np.random.uniform()
                             r_idx, rr_idx = divmod(bisect.bisect_left(presum_list, random_number), self.num_rr)
@@ -177,6 +182,8 @@ class HighwayEnvNDD(HighwayExitEnv):
                             v_generate = np.clip(back_vehicle_speed + rr, global_val.v_low, global_val.v_high)
                             pos_generate = back_vehicle_position + r + global_val.LENGTH
 
+                            
+
                         vehicle_forward_list_one_lane.append((pos_generate, v_generate))
                         back_vehicle_speed = v_generate
                         back_vehicle_position = pos_generate
@@ -189,8 +196,17 @@ class HighwayEnvNDD(HighwayExitEnv):
                             generate_finish = True
                 vehicle_list_each_lane = vehicle_backward_list_one_lane + vehicle_forward_list_one_lane
                 vehicle_list.append(vehicle_list_each_lane)
+            with open("test.txt",'a+') as f:                
+                for lane in vehicle_list:
+                    for (x,v) in lane:
+                        f.write(str(x)+' '+str(v)+',')
+                    f.write('\n')
+                f.write('\n')
 
-        if self.generate_vehicle_mode == "Given_ini":
+
+
+
+        if self.generate_vehicle_mode == "given_ini":
             for lane_idx in range(self.max_lane + 1):
                 ini_one_lane = given_ini[lane_idx]
                 for i in range(len(ini_one_lane)):
@@ -547,6 +563,7 @@ class HighwayEnvNDD(HighwayExitEnv):
         Returns:
             float: initial speed.
             float: random position.
+            ??? 根本就不是float你妈的，全改成int
 
 
         """
@@ -554,7 +571,6 @@ class HighwayEnvNDD(HighwayExitEnv):
         idx = bisect.bisect_left(self.speed_CDF, random_number)
         speed = global_val.v_to_idx_dic.inverse[idx]
         rand_position = round(np.random.uniform(pos_low, pos_high))
-        # print(random_number, idx, speed)
         return speed, rand_position
 
 

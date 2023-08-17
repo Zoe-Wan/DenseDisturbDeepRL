@@ -1,10 +1,11 @@
 import torch
 import torch.nn as nn
 import numpy as np
+from numpy import inf
 from torch.distributions import MultivariateNormal
 from torch.distributions import Categorical
 import os
-
+# 使用mc first visit估计方法
 ################################## set device ##################################
 print("============================================================================================")
 # set device to cpu or cuda
@@ -86,9 +87,6 @@ class ActorCritic(nn.Module):
         raise NotImplementedError
     
     def act(self, state,n):
-
-        
-
         if self.has_continuous_action_space:
             action_mean = self.actor(state)
             cov_mat = torch.diag(self.action_var).unsqueeze(dim=0)
@@ -100,11 +98,29 @@ class ActorCritic(nn.Module):
             action_probs = action_probs*mask
             dist = Categorical(action_probs)
 
+        # action = torch.argmax(action_probs)
         action = dist.sample()
         action_logprob = dist.log_prob(action)
         state_val = self.critic(state)
 
         return action.detach(), action_logprob.detach(), state_val.detach()
+    def act_test(self, state,n):
+        if self.has_continuous_action_space:
+            action_mean = self.actor(state)
+            cov_mat = torch.diag(self.action_var).unsqueeze(dim=0)
+            dist = MultivariateNormal(action_mean, cov_mat)
+        else:
+            action_probs = self.actor(state)
+            mask = torch.zeros(action_probs.shape).to(device)
+            mask[:n]=1
+            action_probs = action_probs*mask
+            dist = Categorical(action_probs)
+
+        action = torch.argmax(action_probs)
+        action_logprob = dist.log_prob(action)
+        state_val = self.critic(state)
+
+        return action.detach(), state_val.detach()
     
     def evaluate(self, state, action):
 
@@ -204,13 +220,27 @@ class Disturber:
             with torch.no_grad():
                 state = torch.FloatTensor(state).to(device)
                 action, action_logprob, state_val = self.policy_old.act(state,n)
-            
             self.buffer.states.append(state)
             self.buffer.actions.append(action)
             self.buffer.logprobs.append(action_logprob)
             self.buffer.state_values.append(state_val)
 
-            return action.item()
+            return action.item(),state_val
+
+    def take_action_test(self, state, n):
+
+        if self.has_continuous_action_space:
+            with torch.no_grad():
+                state = torch.FloatTensor(state).to(device)
+                action, state_val = self.policy_old.act_test(state,n)
+
+            return action.detach().cpu().numpy().flatten()
+        else:
+            with torch.no_grad():
+                state = torch.FloatTensor(state).to(device)
+                action, state_val = self.policy_old.act_test(state,n)
+
+            return action.item(), state_val
 
     def update(self):
         # Monte Carlo estimate of returns
@@ -225,7 +255,7 @@ class Disturber:
             
         # Normalizing the rewards
         rewards = torch.tensor(rewards, dtype=torch.float32).to(device)
-        rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-7)
+        # rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-7)
 
         # convert list to tensor
         old_states = torch.squeeze(torch.stack(self.buffer.states, dim=0)).detach().to(device)
@@ -243,6 +273,7 @@ class Disturber:
 
             # Evaluating old actions and values
             logprobs, state_values, dist_entropy = self.policy.evaluate(old_states, old_actions)
+
 
             # match state_values tensor dimensions with rewards tensor
             state_values = torch.squeeze(state_values)
@@ -271,7 +302,7 @@ class Disturber:
         self.policy_old.load_state_dict(self.policy.state_dict())
 
         # clear buffer
-        self.buffer.clear()
+        
 
         return np.array(actor_loss_list).mean(), np.array(critic_loss_list).mean()
     
@@ -279,6 +310,7 @@ class Disturber:
         torch.save(self.policy_old.state_dict(), os.path.join(checkpoint_path,'policy.pth'))
    
     def load(self, checkpoint_path):
+        checkpoint_path = os.path.join(checkpoint_path,'policy.pth')
         self.policy_old.load_state_dict(torch.load(checkpoint_path, map_location=lambda storage, loc: storage))
         self.policy.load_state_dict(torch.load(checkpoint_path, map_location=lambda storage, loc: storage))
         

@@ -183,9 +183,11 @@ class Disturber:
             actor_loss_list.append(actor_loss.cpu().detach().item())
             critic_loss.backward()
             critic_loss_list.append(critic_loss.cpu().detach().item())
-
+            if torch.isnan(actor_loss).sum() !=0:
+                breakpoint()
             self.actor_optimizer.step()
             self.critic_optimizer.step()
+            
         return np.array(actor_loss_list).mean(), np.array(critic_loss_list).mean()
     
     def save(self, dir):

@@ -65,7 +65,7 @@ class AV_RL_agent:
         action_Q_full[np.array(action_indicator) == 0] = -np.inf
         action_id = np.argmax(action_Q_full).item()
 
-        return action_id
+        return action_Q_full, action_id
 
     def _transfer_to_state_input(self, original_obs_df):
         """
