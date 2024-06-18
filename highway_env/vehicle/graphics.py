@@ -12,9 +12,11 @@ class VehicleGraphics(object):
     WHITE = (255,255,255)
     GREEN = (50, 200, 0)
     BLUE = (100, 200, 255)
+    ORANGE = (255,102,0)
     YELLOW = (200, 200, 0)
     BLACK = (60, 60, 60)
     PURPLE = (200, 0, 150)
+    GREY = (128,128,128)
     DEFAULT_COLOR = YELLOW
     EGO_COLOR = WHITE
 
@@ -38,7 +40,7 @@ class VehicleGraphics(object):
         h = v.heading if abs(v.heading) > 2 * np.pi / 180 else 0
         sr = pygame.transform.rotate(s, -h * 180 / np.pi)
         surface.blit(sr, (surface.pos2pix(v.position[0] - v.LENGTH / 2, v.position[1] - v.LENGTH / 2)))
-
+        
     @classmethod
     def display_trajectory(cls, states, surface):
         """
@@ -57,8 +59,15 @@ class VehicleGraphics(object):
             color = cls.RED
         # elif vehicle.controlled:  # Vehicles within observation range of AV. POV and control candidate of NADE.
         #     color = cls.PURPLE
+
+        elif vehicle.disturbed==3:
+            color = cls.ORANGE
+        elif vehicle.disturbed==4:
+            color = cls.GREEN
         elif vehicle.disturbed:
             color = cls.BLACK
+        elif vehicle.selected:
+            color = cls.YELLOW
         elif isinstance(vehicle, MDPVehicle):
             color = cls.EGO_COLOR
         elif isinstance(vehicle, IDMVehicle) or vehicle.IDM_flag:

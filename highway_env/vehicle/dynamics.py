@@ -40,6 +40,7 @@ class Vehicle(Loggable):
         self.log = []
         self.controlled = False
         self.disturbed = False
+        self.selected = False
         self.IDM_flag = False
 
     @classmethod

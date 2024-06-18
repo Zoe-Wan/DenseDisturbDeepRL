@@ -113,6 +113,8 @@ class EnvViewer(object):
 
             self.frame += 1
 
+    
+    
     def get_image(self):
         """
         :return: the rendered image as a rbg array

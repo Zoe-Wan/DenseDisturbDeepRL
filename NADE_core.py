@@ -14,6 +14,7 @@ def select_controlled_bv_and_action(obs, env):
     bv_action_idx_list=[]
     for i in range(len(env.controlled_bvs)):  # Loop over all candidate controlled BVs.
         possi_array = get_NDD_possi(env.controlled_bvs[i], obs[i])
+        # give driving action to bvs
 
         bv_action_idx = np.random.choice(len(global_val.BV_ACTIONS), 1, replace=False, p=possi_array)
 

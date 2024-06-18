@@ -4,6 +4,9 @@ import numpy as np
 from numpy import inf
 from torch.distributions import MultivariateNormal
 from torch.distributions import Categorical
+import global_val
+import random
+import math
 import os
 # 使用mc first visit估计方法
 ################################## set device ##################################
@@ -26,6 +29,8 @@ class RolloutBuffer:
         self.states = []
         self.logprobs = []
         self.rewards = []
+        # self.weights = []
+        self.ndd_prossi_list = []
         self.state_values = []
         self.is_terminals = []
     
@@ -34,6 +39,8 @@ class RolloutBuffer:
         del self.states[:]
         del self.logprobs[:]
         del self.rewards[:]
+        # del self.weights[:]
+        del self.ndd_prossi_list[:]
         del self.state_values[:]
         del self.is_terminals[:]
 
@@ -86,41 +93,47 @@ class ActorCritic(nn.Module):
     def forward(self):
         raise NotImplementedError
     
-    def act(self, state,n):
+    def act(self, state, mask):
         if self.has_continuous_action_space:
             action_mean = self.actor(state)
             cov_mat = torch.diag(self.action_var).unsqueeze(dim=0)
             dist = MultivariateNormal(action_mean, cov_mat)
         else:
             action_probs = self.actor(state)
-            mask = torch.zeros(action_probs.shape).to(device)
-            mask[:n]=1
-            action_probs = action_probs*mask
+            dist_mask = torch.zeros(action_probs.shape).to(device)
+            dist_mask[mask] = 1
+            action_probs*=dist_mask
             dist = Categorical(action_probs)
 
         # action = torch.argmax(action_probs)
+        # action = dist.sample()
+
         action = dist.sample()
         action_logprob = dist.log_prob(action)
         state_val = self.critic(state)
 
         return action.detach(), action_logprob.detach(), state_val.detach()
-    def act_test(self, state,n):
+    def act_test(self, state,mask):
         if self.has_continuous_action_space:
             action_mean = self.actor(state)
             cov_mat = torch.diag(self.action_var).unsqueeze(dim=0)
             dist = MultivariateNormal(action_mean, cov_mat)
         else:
             action_probs = self.actor(state)
-            mask = torch.zeros(action_probs.shape).to(device)
-            mask[:n]=1
-            action_probs = action_probs*mask
-            dist = Categorical(action_probs)
+            breakpoint()
+            dist_mask = torch.zeros(action_probs.shape).to(device)
+            dist_mask[mask] = 1
+            action_probs*=dist_mask
 
-        action = torch.argmax(action_probs)
+            dist = Categorical(action_probs)
+        # action = torch.argmax(action_probs)
+        action = dist.sample()
+
         action_logprob = dist.log_prob(action)
+
         state_val = self.critic(state)
 
-        return action.detach(), state_val.detach()
+        return action.detach(),action_logprob.detach(), state_val.detach()
     
     def evaluate(self, state, action):
 
@@ -195,52 +208,83 @@ class Disturber:
             print("WARNING : Calling PPO::decay_action_std() on discrete action space policy")
         print("--------------------------------------------------------------------------------------------")
 
-    def disturb(self, df, action):
-        if action == 0:
-            return df
-        else:
-            df = df.drop(index=action, inplace=False)
+    # def disturb(self, df, action):
+    #     if action == 0:
+    #         return df
+    #     else:
+    #         df = df.drop(index=action, inplace=False)
+    #         return df.reset_index(drop=True)
+    
+    def disturb(self, df, actions, indexes):
+
+        ndf=df.copy()
+        disturb_actions = []
+        for ori_i in range(6):
+            i = indexes[ori_i]
+            a = actions[ori_i]
+            if i is not None:
+                if a==0:
+                    ndf.loc[i,'x']+=10
+                elif a==1:
+                    ndf.loc[i,'x']-=10
+                elif a==2:
+                    ndf.loc[i,'v']+=5
+                elif a==3:
+                    ndf.loc[i,'v']-=5
+                elif a==4:
+                    ndf.drop(i)
+
+                elif a == 6:
+                    pass
+                disturb_actions.append(a)
+            else:
+                if a==5:
+                    egox = ndf.loc[0,'x']+30
+                    egov = ndf.loc[0,'v']
+                    egol = ndf.loc[0,'lane_id']
+                    new_row = {'x':egox,'v':egov, 'lane_id':egol}
+                    ndf.loc[len(ndf)-1] = new_row
+                    disturb_actions.append(5)
+                else:
+                    disturb_actions.append(6)
+        return ndf,disturb_actions
             
-            return df.reset_index(drop=True)
-            
-    def take_action(self, state, n):
+    def take_action(self, state,mask):
 
-        if self.has_continuous_action_space:
-            with torch.no_grad():
-                state = torch.FloatTensor(state).to(device)
-                action, action_logprob, state_val = self.policy_old.act(state,n)
 
-            self.buffer.states.append(state)
-            self.buffer.actions.append(action)
-            self.buffer.logprobs.append(action_logprob)
-            self.buffer.state_values.append(state_val)
-
-            return action.detach().cpu().numpy().flatten()
+        with torch.no_grad():
+            state = torch.FloatTensor(state).to(device)
+            action, action_logprob, state_val = self.policy_old.act(state,mask)
+        
+        if action!=36:
+            if random.random()<0.1:
+                self.buffer.states.append(state)
+                self.buffer.actions.append(action)
+                self.buffer.logprobs.append(action_logprob)
+                self.buffer.state_values.append(state_val)
+                return action.item(),state_val,(action_logprob).detach().cpu().numpy()
+                
+            else:
+                return 36,None,0
         else:
-            with torch.no_grad():
-                state = torch.FloatTensor(state).to(device)
-                action, action_logprob, state_val = self.policy_old.act(state,n)
-            self.buffer.states.append(state)
-            self.buffer.actions.append(action)
-            self.buffer.logprobs.append(action_logprob)
-            self.buffer.state_values.append(state_val)
+            return 36,None,0
 
-            return action.item(),state_val
 
-    def take_action_test(self, state, n):
 
-        if self.has_continuous_action_space:
-            with torch.no_grad():
-                state = torch.FloatTensor(state).to(device)
-                action, state_val = self.policy_old.act_test(state,n)
+    def take_action_test(self, state,mask):
 
-            return action.detach().cpu().numpy().flatten()
-        else:
-            with torch.no_grad():
-                state = torch.FloatTensor(state).to(device)
-                action, state_val = self.policy_old.act_test(state,n)
 
-            return action.item(), state_val
+        with torch.no_grad():
+            state = torch.FloatTensor(state).to(device)
+            action, action_logprob, state_val = self.policy_old.act_test(state,mask)
+            if action!= 36:
+                self.buffer.states.append(state)
+                self.buffer.actions.append(action)
+                self.buffer.logprobs.append(action_logprob)
+                self.buffer.state_values.append(state_val)
+                return action.item(), state_val,action_logprob.detach().cpu().numpy()
+            else:
+                return 36,None,0
 
     def update(self):
         # Monte Carlo estimate of returns

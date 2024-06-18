@@ -3,6 +3,8 @@ import os
 import numpy as np
 import scipy.io
 
+
+INVALID_STATE=114514
 # =========== Simulation parameters ==========
 simulation_resolution = 1  # The time interval(resolution) of the simulation platform (second)
 # =========== Vehicle parameters =============

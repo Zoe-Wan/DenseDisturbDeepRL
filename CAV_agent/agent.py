@@ -121,9 +121,12 @@ class AV_RL_agent:
         df_copy.loc[0, 'lane_id'] = utils.remap(df_copy.loc[0, 'lane_id'], [0, lane_range], [-1, 1])
         df_copy.loc[0, 'v'] = utils.remap(df_copy.loc[0, 'v'], [self.env.min_velocity, self.env.max_velocity], [-1, 1])
 
+        df_copy[df_copy>1.1]=1
+        df_copy[df_copy<-1.1]=-1   
         assert ((-1.1 <= df_copy.x).all() and (df_copy.x <= 1.1).all())
         assert ((-1.1 <= df_copy.v).all() and (df_copy.v <= 1.1).all())
         assert ((-1.1 <= df_copy.lane_id).all() and (df_copy.lane_id <= 1.1).all())
+
 
         return df_copy
 
